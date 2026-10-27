@@ -44,6 +44,8 @@ Put a **broker** in the middle. It is the *only* component the three parties sha
 | **R3** | A **brand-new model session per test case**, verified against a pristine state hash, plus per-session **canary tokens** to detect cross-session leakage. |
 | **R4** | Each test yields an **attestation**: `valid` only if sessions were fresh, no canary leaked, red's commitments still match, and the **hash-chained audit log** verifies. |
 
+> **Full detail:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers component specs, architecture and sequence diagrams, how to run and test the simulation, its limitations, and the phased plan for a production deployment.
+
 ## Proof, not claims
 
 `bayora/verifier.py` runs the **same seven cross-tenant attacks** against a deliberately naive shared sandbox (`naive.py`, modeled on the problem statement's current setup) and against the broker:
