@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayora – isolation broker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef1f4; --ink: #14202e; --muted: #5a6877; --rule: #c9d1d9;
+    --red: #c93a2b; --red-wash: #f7dcd8; --blue: #2754b8; --blue-wash: #d9e3f8;
+    --held: #1f7a4d; --held-wash: #d6eee1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 16px/1.55 "Instrument Sans", system-ui, sans-serif; }
+  h1, h2 { font-family: "Bricolage Grotesque", Georgia, serif; line-height: 1.1; margin: 0; }
+  main { max-width: 1040px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end;
+           border-bottom: 2px solid var(--ink); padding-bottom: 24px; }
+  h1 { font-size: clamp(2.4rem, 6vw, 4rem); letter-spacing: -0.02em; }
+  header p { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
+  .teams { display: flex; gap: 6px; font-weight: 600; font-size: .9rem; }
+  .teams span { padding: 6px 12px; border-radius: 2px; }
+  .t-red { background: var(--red-wash); color: var(--red); }
+  .t-blue { background: var(--blue-wash); color: var(--blue); }
+  .t-llm { background: var(--ink); color: var(--paper); }
+  section { margin-top: 56px; }
+  h2 { font-size: 1.7rem; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); margin: 8px 0 20px; max-width: 70ch; }
+  button { font: inherit; font-weight: 600; background: var(--ink); color: var(--paper); border: 0;
+           padding: 10px 18px; border-radius: 2px; cursor: pointer; }
+  button:hover { background: #23364d; }
+  button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  button[disabled] { opacity: .5; cursor: wait; }
+
+  .score { display: flex; gap: 40px; align-items: baseline; margin: 28px 0 8px; flex-wrap: wrap; }
+  .score b { font: 700 3.4rem/1 "Bricolage Grotesque", Georgia, serif; }
+  .score .n b { color: var(--red); } .score .b b { color: var(--held); }
+  .score small { display: block; color: var(--muted); font-size: .95rem; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: .9rem; padding: 8px 12px 8px 0; border-bottom: 2px solid var(--ink); }
+  td { vertical-align: top; padding: 14px 16px 14px 0; border-bottom: 1px solid var(--rule); }
+  td.id { width: 44px; font-weight: 600; color: var(--muted); }
+  .verdict { display: inline-block; font-weight: 700; padding: 2px 8px; border-radius: 2px; margin-bottom: 4px; }
+  .leaks { background: var(--red-wash); color: var(--red); }
+  .held { background: var(--held-wash); color: var(--held); }
+  .ev { display: block; color: var(--muted); font-size: .9rem; }
+
+  .round { margin-top: 22px; }
+  .round-head { display: grid; grid-template-columns: 240px 1fr auto; gap: 16px; align-items: center; }
+  .bar { height: 14px; background: var(--rule); border-radius: 1px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--red); transition: width .5s ease; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--blue); font-weight: 500; }
+  .case { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px dotted var(--rule); font-size: .92rem; }
+  .pill { font-weight: 600; font-size: .82rem; padding: 1px 8px; border-radius: 2px; justify-self: start; }
+  .pill.attack_succeeded { background: var(--red-wash); color: var(--red); }
+  .pill.blocked_by_defense { background: var(--blue-wash); color: var(--blue); }
+  .pill.safe, .pill.model_refused { background: var(--held-wash); color: var(--held); }
+  .valid { color: var(--held); font-weight: 600; }
+  .err { color: var(--red); margin-top: 12px; }
+  code { background: #e1e6ec; padding: 1px 6px; border-radius: 2px; font-size: .88em; }
+  @media (max-width: 720px) {
+    header { grid-template-columns: 1fr; }
+    .round-head { grid-template-columns: 1fr; gap: 6px; }
+    .case { grid-template-columns: 1fr; gap: 2px; }
+    th:nth-child(1), td.id { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Bayora isolation broker</h1>
+      <p>Red team, blue team and the model under test share one environment. This prototype puts a broker between them so nobody can see what they shouldn't, and every finding carries proof the isolation held.</p>
+    </div>
+    <div class="teams" aria-label="Tenants"><span class="t-red">Red</span><span class="t-blue">Blue</span><span class="t-llm">Client LLM</span></div>
+  </header>
+
+  <section id="probes">
+    <h2>Does isolation actually hold?</h2>
+    <p class="lede">The same seven cross-tenant attacks, run against a naive shared sandbox and against the Bayora broker. A cell that says <em>Leaks</em> means that boundary was broken.</p>
+    <button id="runProbes">Run probe suite</button>
+    <div id="probeOut" aria-live="polite"></div>
+  </section>
+
+  <section id="loop">
+    <h2>Attack, defend, validate, repeat</h2>
+    <p class="lede">Red attacks with sealed payloads. Blue's rules run inside the broker without being revealed. After each test concludes, blue reads the debrief and patches. Watch successful attacks fall round by round.</p>
+    <button id="runLoop">Run three rounds</button>
+    <div id="loopOut" aria-live="polite"></div>
+  </section>
+
+  <section>
+    <h2>Use the API directly</h2>
+    <p class="lede">Each tenant gets its own token. Interactive docs are at <code>/docs</code>; role tokens for the demo are at <code>/api/demo/tokens</code>.</p>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+// All DOM is built with textContent-safe nodes: payload strings are untrusted.
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k === "class" ? e.className = v : e.setAttribute(k, v);
+  for (const kid of kids) e.append(kid);
+  return e;
+}
+async function run(btn, out, url, render) {
+  btn.disabled = true; out.replaceChildren(el("p", {class: "lede"}, "Running…"));
+  try {
+    const r = await fetch(url); if (!r.ok) throw new Error("HTTP " + r.status);
+    out.replaceChildren(render(await r.json()));
+  } catch (e) { out.replaceChildren(el("p", {class: "err"}, "Failed: " + e.message)); }
+  btn.disabled = false;
+}
+function verdictCell(r) {
+  return el("td", {}, el("span", {class: "verdict " + (r.leaks ? "leaks" : "held")}, r.leaks ? "Leaks" : "Held"),
+            el("span", {class: "ev"}, r.evidence));
+}
+function renderProbes(d) {
+  const root = el("div");
+  root.append(el("div", {class: "score"},
+    el("div", {class: "n"}, el("b", {}, `${d.naive_leaks}/${d.total}`), el("small", {}, "boundaries broken in the naive sandbox")),
+    el("div", {class: "b"}, el("b", {}, `${d.bayora_leaks}/${d.total}`), el("small", {}, "boundaries broken with Bayora"))));
+  const head = el("tr", {}, el("th", {}), el("th", {}, "Attack"), el("th", {}, "Naive shared sandbox"), el("th", {}, "Bayora broker"));
+  const tbl = el("table", {}, el("thead", {}, head));
+  const body = el("tbody");
+  for (const p of d.probes) {
+    body.append(el("tr", {}, el("td", {class: "id"}, p.id),
+      el("td", {}, p.title, el("span", {class: "ev"}, "Requirement " + p.requirement)),
+      verdictCell(p.naive), verdictCell(p.bayora)));
+  }
+  tbl.append(body); root.append(tbl); return root;
+}
+function renderLoop(d) {
+  const root = el("div");
+  for (const r of d.rounds) {
+    const pct = Math.round(100 * r.attacks_succeeded / r.total);
+    const det = el("details", {}, el("summary", {}, "Debrief (revealed to blue after the test concluded)"));
+    for (const c of r.cases)
+      det.append(el("div", {class: "case"}, el("span", {class: "pill " + c.outcome}, c.outcome.replaceAll("_", " ")), el("span", {}, c.payload)));
+    const bar = el("div", {class: "bar"}, el("i", {style: `width:${pct}%`}));
+    root.append(el("div", {class: "round"},
+      el("div", {class: "round-head"}, el("strong", {}, r.round), bar,
+        el("span", {}, `${r.attacks_succeeded} of ${r.total} succeeded · `,
+          el("span", {class: r.valid ? "valid" : "err"}, r.valid ? "attestation valid" : "attestation INVALID"))),
+      det));
+  }
+  root.append(el("p", {class: "lede"}, `Audit log: ${d.audit_entries} entries, hash chain ${d.audit_chain_valid ? "verified" : "BROKEN"}; ${d.denied_attempts} denied attempts recorded.`));
+  return root;
+}
+$("#runProbes").onclick = (e) => run(e.target, $("#probeOut"), "/api/demo/probes", renderProbes);
+$("#runLoop").onclick = (e) => run(e.target, $("#loopOut"), "/api/demo/loop", renderLoop);
+</script>
+</body>
+</html>
