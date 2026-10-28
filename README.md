@@ -44,7 +44,14 @@ Put a **broker** in the middle. It is the *only* component the three parties sha
 | **R3** | A **brand-new model session per test case**, verified against a pristine state hash, plus per-session **canary tokens** to detect cross-session leakage. |
 | **R4** | Each test yields an **attestation**: `valid` only if sessions were fresh, no canary leaked, red's commitments still match, and the **hash-chained audit log** verifies. |
 
-> **Full detail:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers component specs, architecture and sequence diagrams, how to run and test the simulation, its limitations, and the phased plan for a production deployment.
+![Bayora dashboard: probe suite and three-round red/blue loop](docs/images/dashboard.png)
+
+## Documentation
+
+| Document | What's in it |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component specs, architecture and sequence diagrams, how to run and test the simulation, limitations, phased production plan |
+| [docs/DEMO.md](docs/DEMO.md) | 3 to 4 minute walkthrough, curl commands, likely Q&A, and where each judging criterion is addressed |
 
 ## Proof, not claims
 
@@ -100,7 +107,12 @@ bayora/verifier.py   7-probe isolation suite
 bayora/loop.py       scripted red/blue loop
 bayora/api.py        FastAPI service
 web/index.html       dashboard
-tests/               pytest suite
+tests/               pytest suite (14 tests)
+demo.py              terminal demo
+docs/                ARCHITECTURE.md, DEMO.md, images/dashboard.png
+.github/workflows/   CI: runs pytest on every push
+Dockerfile           container image for the API
+LICENSE              MIT
 ```
 
 ## Threat model and honest limitations
